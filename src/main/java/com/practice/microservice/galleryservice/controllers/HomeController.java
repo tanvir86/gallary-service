@@ -1,6 +1,9 @@
 package com.practice.microservice.galleryservice.controllers;
 
+import com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand;
 import com.practice.microservice.galleryservice.entities.Gallery;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -13,12 +16,15 @@ import java.util.List;
 @RestController
 @RequestMapping("/")
 public class HomeController {
-    @Autowired
+
     private RestTemplate restTemplate;
-
-    @Autowired
     private Environment env;
+    private static final Logger LOGGER = LoggerFactory.getLogger(HomeController.class);
 
+    public HomeController(RestTemplate restTemplate, Environment env) {
+        this.restTemplate = restTemplate;
+        this.env = env;
+    }
 
     @RequestMapping("/")
     public String home() {
@@ -29,7 +35,9 @@ public class HomeController {
     }
 
     @RequestMapping("/{id}")
+    @HystrixCommand(fallbackMethod = "getGallaryFallBack")
     public Gallery getGallery(@PathVariable final int id) {
+        LOGGER.info("Creating gallery object ... ");
         // create gallery object
         Gallery gallery = new Gallery();
         gallery.setId(id);
@@ -41,6 +49,11 @@ public class HomeController {
         return gallery;
     }
 
+    public Gallery getGallaryFallBack(int galleryId, Throwable hystrixCommand){
+        Gallery gallery = new Gallery();
+        gallery.setId(galleryId);
+        return gallery ;
+    }
     // -------- Admin Area --------
     // This method should only be accessed by users with role of 'admin'
     // We'll add the logic of role based auth later
